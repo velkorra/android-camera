@@ -49,7 +49,7 @@ class CameraManager(private val context: Context) {
     suspend fun initCamera(): ProcessCameraProvider {
         return withContext(Dispatchers.Main) {
             if (cameraProvider == null) {
-                cameraProvider = ProcessCameraProvider.Companion.getInstance(context).await()
+                cameraProvider = ProcessCameraProvider.getInstance(context).await()
             }
             cameraProvider!!
         }
@@ -90,9 +90,9 @@ class CameraManager(private val context: Context) {
                     imageCapture,
                     videoCapture
                 )
-                Log.d("CameraRepo", "Bind Success: All use cases")
+                Log.d("CameraManager", "Bind Success: All use cases")
             } catch (e: Exception) {
-                Log.e("CameraRepo", "Bind Failed (All). Trying Photo only...", e)
+                Log.e("CameraManager", "Bind Failed (All). Trying Photo only...", e)
 
                 provider.unbindAll()
                 camera = provider.bindToLifecycle(
@@ -101,11 +101,11 @@ class CameraManager(private val context: Context) {
                     preview,
                     imageCapture
                 )
-                Log.w("CameraRepo", "Bind Partial: VIDEO DISABLED due to hardware limits")
+                Log.w("CameraManager", "Bind Partial: VIDEO DISABLED due to hardware limits")
             }
 
         } catch (e: Exception) {
-            Log.e("CameraRepo", "CRITICAL: Camera bind failed completely", e)
+            Log.e("CameraManager", "CRITICAL: Camera bind failed completely", e)
         }
     }
 
@@ -125,7 +125,9 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    fun setZoomRatio(ratio: Float) { camera?.cameraControl?.setZoomRatio(ratio) }
+    fun setZoomRatio(ratio: Float) {
+        camera?.cameraControl?.setZoomRatio(ratio)
+    }
 
     fun startFocus(meteringPoint: MeteringPoint) {
         val action = FocusMeteringAction.Builder(meteringPoint).build()
@@ -151,10 +153,17 @@ class CameraManager(private val context: Context) {
                 videoCapture
             )
         } catch (e: Exception) {
-            Log.e("CameraRepo", "Switch camera failed", e)
+            Log.e("CameraManager", "Switch camera failed", e)
             try {
-                camera = provider.bindToLifecycle(lifecycleOwner, currentCameraSelector, Preview.Builder().build().apply { setSurfaceProvider(surfaceProvider) }, imageCapture)
-            } catch (e2: Exception) { e2.printStackTrace() }
+                camera = provider.bindToLifecycle(
+                    lifecycleOwner,
+                    currentCameraSelector,
+                    Preview.Builder().build().apply { setSurfaceProvider(surfaceProvider) },
+                    imageCapture
+                )
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+            }
         }
     }
 
@@ -171,7 +180,8 @@ class CameraManager(private val context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/DemoCamera")
             } else {
-                val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val picturesDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
                 val appDir = File(picturesDir, "DemoCamera")
                 if (!appDir.exists()) {
                     appDir.mkdirs()
@@ -182,7 +192,11 @@ class CameraManager(private val context: Context) {
         }
 
         val outputOptions = ImageCapture.OutputFileOptions
-            .Builder(context.contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            .Builder(
+                context.contentResolver,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
             .build()
 
         capture.takePicture(
@@ -192,6 +206,7 @@ class CameraManager(private val context: Context) {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     output.savedUri?.let { onSuccess(it) }
                 }
+
                 override fun onError(exc: ImageCaptureException) {
                     onError(exc)
                 }
@@ -201,7 +216,7 @@ class CameraManager(private val context: Context) {
 
     fun startRecording(onVideoSaved: (Uri) -> Unit) {
         val capture = videoCapture ?: run {
-            Log.e("CameraRepo", "Recording failed: VideoCapture is null")
+            Log.e("CameraManager", "Recording failed: VideoCapture is null")
             return
         }
         val name = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
@@ -214,7 +229,8 @@ class CameraManager(private val context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/DemoCamera")
             } else {
-                val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                val moviesDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
                 val appDir = File(moviesDir, "DemoCamera")
                 if (!appDir.exists()) {
                     appDir.mkdirs()
@@ -255,7 +271,15 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    fun pauseRecording() { activeRecording?.pause() }
-    fun resumeRecording() { activeRecording?.resume() }
-    fun stopRecording() { activeRecording?.stop(); activeRecording = null; camera?.cameraControl?.enableTorch(false) }
+    fun pauseRecording() {
+        activeRecording?.pause()
+    }
+
+    fun resumeRecording() {
+        activeRecording?.resume()
+    }
+
+    fun stopRecording() {
+        activeRecording?.stop(); activeRecording = null; camera?.cameraControl?.enableTorch(false)
+    }
 }

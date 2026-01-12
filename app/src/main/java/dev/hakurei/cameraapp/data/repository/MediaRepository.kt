@@ -72,14 +72,34 @@ class MediaRepository(private val context: Context) {
 
     suspend fun deleteMedia(uri: Uri): IntentSender? = withContext(Dispatchers.IO) {
         try {
-            context.contentResolver.delete(uri, null, null)
-            return@withContext null
-        } catch (e: SecurityException) {
-            return@withContext if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                MediaStore.createDeleteRequest(context.contentResolver, listOf(uri)).intentSender
-            } else {
-                null
+            val rowsDeleted = context.contentResolver.delete(uri, null, null)
+
+            if (rowsDeleted > 0) return@withContext null
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                return@withContext MediaStore.createDeleteRequest(
+                    context.contentResolver,
+                    listOf(uri)
+                ).intentSender
             }
+
+            return@withContext null
+
+        } catch (e: SecurityException) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                return@withContext MediaStore.createDeleteRequest(
+                    context.contentResolver,
+                    listOf(uri)
+                ).intentSender
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val recoverable = e as? android.app.RecoverableSecurityException
+                if (recoverable != null) {
+                    return@withContext recoverable.userAction.actionIntent.intentSender
+                }
+            }
+            return@withContext null
         }
     }
 }

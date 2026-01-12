@@ -1,6 +1,7 @@
 package dev.hakurei.cameraapp.ui.screens.gallery
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PermMedia
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import dev.hakurei.cameraapp.domain.model.MediaModel
 import dev.hakurei.cameraapp.domain.model.MediaType
@@ -50,7 +53,10 @@ fun GalleryScreen(
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         } else {
-            listOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            listOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
         }
     }
 
@@ -97,10 +103,17 @@ fun GalleryContent(
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
+        if (result.resultCode == Activity.RESULT_OK) {
             viewModel.onDeleteConfirmed()
         } else {
             viewModel.dismissDeleteDialog()
+        }
+    }
+
+    LaunchedEffect(uiState.deleteIntentSender) {
+        uiState.deleteIntentSender?.let { sender ->
+            val request = IntentSenderRequest.Builder(sender).build()
+            deleteLauncher.launch(request)
         }
     }
 
@@ -125,31 +138,11 @@ fun GalleryContent(
         ) {
             items(uiState.mediaList, key = { it.id }) { media ->
                 MediaGridItem(
-                    media = media,
-                    viewModel = viewModel,
-                    onClick = { onImageClick(media.id) }
+                    media = media, onClick = { onImageClick(media.id) },
+                    viewModel = viewModel
                 )
             }
         }
-    }
-
-    if (uiState.deleteIntentSender != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissDeleteDialog() },
-            title = { Text("Удаление") },
-            text = { Text("Подтвердите удаление файла") },
-            confirmButton = {
-                TextButton(onClick = {
-                    val intentSender = uiState.deleteIntentSender
-                    if (intentSender != null) {
-                        deleteLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
-                    }
-                }) { Text("Удалить") }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissDeleteDialog() }) { Text("Отмена") }
-            }
-        )
     }
 }
 
@@ -176,7 +169,9 @@ fun MediaGridItem(
                 imageVector = Icons.Default.PlayCircle,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.align(Alignment.Center).size(32.dp)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(32.dp)
             )
         }
         val dateText = remember(media.dateAdded) {
@@ -190,7 +185,10 @@ fun MediaGridItem(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(4.dp)
-                .background(Color.Black.copy(alpha = 0.5f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                .background(
+                    Color.Black.copy(alpha = 0.5f),
+                    RoundedCornerShape(4.dp)
+                )
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         )
     }
@@ -212,7 +210,7 @@ fun GalleryTopBar(onBackClick: () -> Unit) {
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun NoGalleryPermissionScreen(
-    permissionState: com.google.accompanist.permissions.MultiplePermissionsState,
+    permissionState: MultiplePermissionsState,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
