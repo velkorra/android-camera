@@ -3,7 +3,7 @@ package dev.hakurei.cameraapp.ui.screens.camera
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.hakurei.cameraapp.data.repository.CameraRepository
+import dev.hakurei.cameraapp.data.manager.CameraManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,7 @@ data class CameraUiState(
 )
 
 class CameraViewModel(
-    private val cameraRepository: CameraRepository
+    private val cameraManager: CameraManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CameraUiState())
@@ -39,7 +39,7 @@ class CameraViewModel(
 
     fun startCamera(surfaceProvider: androidx.camera.core.Preview.SurfaceProvider, lifecycleOwner: androidx.lifecycle.LifecycleOwner) {
         viewModelScope.launch {
-            cameraRepository.bindCameraUseCases(lifecycleOwner, surfaceProvider)
+            cameraManager.bindCameraUseCases(lifecycleOwner, surfaceProvider)
         }
     }
 
@@ -49,7 +49,7 @@ class CameraViewModel(
         val resetFlash = FlashMode.OFF
         _uiState.update { it.copy(cameraMode = mode, flashMode = resetFlash) }
 
-        cameraRepository.setFlashMode(resetFlash, mode == CameraMode.VIDEO)
+        cameraManager.setFlashMode(resetFlash, mode == CameraMode.VIDEO)
     }
 
     fun onFlashClick() {
@@ -70,16 +70,16 @@ class CameraViewModel(
         }
 
         _uiState.update { it.copy(flashMode = newFlashMode) }
-        cameraRepository.setFlashMode(newFlashMode, currentMode == CameraMode.VIDEO)
+        cameraManager.setFlashMode(newFlashMode, currentMode == CameraMode.VIDEO)
     }
 
     fun onZoom(zoomDelta: Float) {
         currentZoomRatio = (currentZoomRatio * zoomDelta).coerceIn(1f, 10f)
-        cameraRepository.setZoomRatio(currentZoomRatio)
+        cameraManager.setZoomRatio(currentZoomRatio)
     }
 
     fun onFocus(meteringPoint: androidx.camera.core.MeteringPoint) {
-        cameraRepository.startFocus(meteringPoint)
+        cameraManager.startFocus(meteringPoint)
     }
 
     fun onCaptureClick() {
@@ -91,7 +91,7 @@ class CameraViewModel(
 
     private fun takePhoto() {
         triggerFlashAnimation()
-        cameraRepository.takePhoto(
+        cameraManager.takePhoto(
             onSuccess = { uri -> _uiState.update { it.copy(lastCapturedUri = uri) } },
             onError = { exc -> _uiState.update { it.copy(error = exc.localizedMessage) } }
         )
@@ -106,7 +106,7 @@ class CameraViewModel(
     }
 
     private fun startRecording() {
-        cameraRepository.startRecording { savedUri ->
+        cameraManager.startRecording { savedUri ->
             _uiState.update { it.copy(lastCapturedUri = savedUri) }
         }
         _uiState.update { it.copy(isRecording = true, recordingDuration = "00:00") }
@@ -114,7 +114,7 @@ class CameraViewModel(
     }
 
     private fun stopRecording() {
-        cameraRepository.stopRecording()
+        cameraManager.stopRecording()
         stopTimer()
 
         _uiState.update {
@@ -127,18 +127,18 @@ class CameraViewModel(
 
         _uiState.update { it.copy(flashMode = FlashMode.OFF) }
 
-        cameraRepository.setFlashMode(FlashMode.OFF, _uiState.value.cameraMode == CameraMode.VIDEO)
+        cameraManager.setFlashMode(FlashMode.OFF, _uiState.value.cameraMode == CameraMode.VIDEO)
 
         if (wasRecording) {
-            cameraRepository.pauseRecording()
+            cameraManager.pauseRecording()
         }
 
-        cameraRepository.switchCamera(lifecycleOwner, surfaceProvider)
+        cameraManager.switchCamera(lifecycleOwner, surfaceProvider)
 
         if (wasRecording) {
             viewModelScope.launch {
                 delay(200)
-                cameraRepository.resumeRecording()
+                cameraManager.resumeRecording()
             }
         }
     }

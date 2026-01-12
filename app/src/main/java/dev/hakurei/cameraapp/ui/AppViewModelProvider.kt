@@ -12,7 +12,7 @@ object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
             CameraViewModel(
-                cameraApplication().container.cameraRepository
+                cameraApplication().container.cameraManager
             )
         }
 

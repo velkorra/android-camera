@@ -1,9 +1,11 @@
-package dev.hakurei.cameraapp.data.repository
+package dev.hakurei.cameraapp.data.manager
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
@@ -33,7 +35,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class CameraRepository(private val context: Context) {
+class CameraManager(private val context: Context) {
 
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
@@ -47,7 +49,7 @@ class CameraRepository(private val context: Context) {
     suspend fun initCamera(): ProcessCameraProvider {
         return withContext(Dispatchers.Main) {
             if (cameraProvider == null) {
-                cameraProvider = ProcessCameraProvider.getInstance(context).await()
+                cameraProvider = ProcessCameraProvider.Companion.getInstance(context).await()
             }
             cameraProvider!!
         }
@@ -166,7 +168,7 @@ class CameraRepository(private val context: Context) {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/DemoCamera")
             } else {
                 val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
@@ -209,7 +211,7 @@ class CameraRepository(private val context: Context) {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/DemoCamera")
             } else {
                 val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
@@ -235,7 +237,7 @@ class CameraRepository(private val context: Context) {
 
         val audioPermission = ContextCompat.checkSelfPermission(
             context,
-            android.Manifest.permission.RECORD_AUDIO
+            Manifest.permission.RECORD_AUDIO
         )
 
         if (audioPermission == PackageManager.PERMISSION_GRANTED) {
